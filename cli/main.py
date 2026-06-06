@@ -2,7 +2,7 @@
 import typer
 from rich.console import Console
 
-from cli.commands import apply, auth, init, jobs, profile
+from cli.commands import apply, auth, daemon, init, jobs, profile
 
 app = typer.Typer(
     name="job-apply",
@@ -15,6 +15,7 @@ app.add_typer(profile.app, name="profile", help="Manage user profile")
 app.add_typer(auth.app, name="auth", help="Manage platform authentication")
 app.add_typer(jobs.app, name="jobs", help="Search and manage jobs")
 app.add_typer(apply.app, name="apply", help="Apply to jobs")
+app.add_typer(daemon.app, name="daemon", help="Manage background daemon")
 app.command()(init.init_command)
 
 console = Console()
