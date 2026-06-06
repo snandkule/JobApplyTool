@@ -10,6 +10,7 @@ from rich.table import Table
 
 from backend.app.database.session import SessionLocal
 from backend.app.models import Resume, Skill, UserProfile, WorkHistory
+from backend.app.config import settings
 
 app = typer.Typer()
 console = Console()
@@ -383,6 +384,142 @@ def reparse_resume(resume_id: int = typer.Argument(..., help="Resume ID")):
             console.print("\nUse 'job-apply profile show-resume {} --content' to view".format(resume_id))
         else:
             console.print("[red]✗ Resume parsing failed[/red]")
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        db.rollback()
+    finally:
+        db.close()
+
+
+@app.command()
+def build_from_resume(
+    resume_id: int = typer.Argument(..., help="Resume ID to build profile from"),
+    auto_apply: bool = typer.Option(False, "--yes", "-y", help="Auto-apply all suggestions"),
+):
+    """Build profile automatically from resume with confirmation."""
+    db = SessionLocal()
+    try:
+        profile = db.query(UserProfile).first()
+        if not profile:
+            console.print("[red]No profile found. Create one first:[/red]")
+            console.print("  [cyan]job-apply profile create[/cyan]")
+            raise typer.Exit(code=1)
+
+        resume = db.query(Resume).filter(Resume.id == resume_id).first()
+        if not resume:
+            console.print(f"[red]Resume {resume_id} not found.[/red]")
+            raise typer.Exit(code=1)
+
+        if not resume.parsed_content:
+            console.print("[yellow]Resume has not been parsed yet. Parsing now...[/yellow]")
+            from pathlib import Path
+            from backend.app.services.resume_parser import parse_resume
+
+            parsed_content = parse_resume(Path(resume.file_path))
+            if parsed_content:
+                resume.parsed_content = parsed_content
+                db.commit()
+                console.print("[green]✓ Resume parsed[/green]")
+            else:
+                console.print("[red]Failed to parse resume[/red]")
+                raise typer.Exit(code=1)
+
+        # Build suggestions
+        console.print("\n[cyan]Analyzing resume and building profile suggestions...[/cyan]")
+        from backend.app.services.profile_builder import ProfileBuilder
+
+        with ProfileBuilder() as builder:
+            suggestions = builder.build_from_resume(resume_id, profile.id)
+
+            # Show suggestions
+            has_suggestions = False
+
+            # Profile updates
+            if suggestions["profile_updates"]:
+                has_suggestions = True
+                console.print("\n[bold yellow]Profile Field Updates:[/bold yellow]")
+                table = Table(show_header=False)
+                table.add_column("Field", style="cyan")
+                table.add_column("Value", style="white")
+
+                for field, value in suggestions["profile_updates"].items():
+                    current_value = getattr(profile, field, None)
+                    if not current_value:
+                        table.add_row(field.replace("_", " ").title(), value)
+
+                console.print(table)
+
+            # Skills
+            if suggestions["skills_to_add"]:
+                has_suggestions = True
+                console.print(f"\n[bold yellow]Skills to Add ({len(suggestions['skills_to_add'])}):[/bold yellow]")
+                skills_list = [s["name"] for s in suggestions["skills_to_add"]]
+                console.print(", ".join(skills_list[:20]))
+                if len(skills_list) > 20:
+                    console.print(f"... and {len(skills_list) - 20} more")
+
+            # Work history
+            if suggestions["work_history_to_add"]:
+                has_suggestions = True
+                console.print(f"\n[bold yellow]Work History Entries ({len(suggestions['work_history_to_add'])}):[/bold yellow]")
+                for work in suggestions["work_history_to_add"][:3]:
+                    console.print(f"  • {work.get('title', 'Unknown')} at {work.get('company', 'Unknown')}")
+
+            # Education
+            if suggestions["education_to_add"]:
+                has_suggestions = True
+                console.print(f"\n[bold yellow]Education Entries ({len(suggestions['education_to_add'])}):[/bold yellow]")
+                for edu in suggestions["education_to_add"]:
+                    console.print(f"  • {edu.get('degree', 'Unknown')}")
+
+            if not has_suggestions:
+                console.print("\n[green]✓ No new suggestions. Your profile is already complete\![/green]")
+                return
+
+            # Confirmation
+            if not auto_apply:
+                console.print("\n[bold]Apply these suggestions?[/bold]")
+                console.print("You can choose:")
+                console.print("  [cyan]all[/cyan] - Apply all suggestions")
+                console.print("  [cyan]profile[/cyan] - Only update profile fields")
+                console.print("  [cyan]skills[/cyan] - Only add skills")
+                console.print("  [cyan]work[/cyan] - Only add work history")
+                console.print("  [cyan]education[/cyan] - Only add education")
+                console.print("  [cyan]none[/cyan] - Cancel")
+
+                choice = Prompt.ask(
+                    "Selection",
+                    choices=["all", "profile", "skills", "work", "education", "none"],
+                    default="all"
+                )
+
+                if choice == "none":
+                    console.print("[yellow]Cancelled.[/yellow]")
+                    return
+
+                selected_fields = None if choice == "all" else [
+                    {"profile": "profile", "skills": "skills", "work": "work_history", "education": "education"}[choice]
+                ]
+            else:
+                selected_fields = None
+
+            # Apply suggestions
+            console.print("\n[cyan]Applying suggestions...[/cyan]")
+            counts = builder.apply_suggestions(profile.id, suggestions, selected_fields)
+
+            # Show results
+            console.print("\n[bold green]✓ Profile updated\![/bold green]")
+            if counts["profile_fields_updated"] > 0:
+                console.print(f"  Profile fields: {counts['profile_fields_updated']}")
+            if counts["skills_added"] > 0:
+                console.print(f"  Skills added: {counts['skills_added']}")
+            if counts["work_history_added"] > 0:
+                console.print(f"  Work history: {counts['work_history_added']}")
+            if counts["education_added"] > 0:
+                console.print(f"  Education: {counts['education_added']}")
+
+            console.print("\n[dim]View your profile: job-apply profile show[/dim]")
 
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
