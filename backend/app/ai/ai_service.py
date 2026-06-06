@@ -40,6 +40,41 @@ class AIService:
             if not job or not profile:
                 raise ValueError("Job or profile not found")
 
+            # Get resume content if available
+            from backend.app.models import Resume
+            import json
+
+            resume_content = ""
+            resume = db.query(Resume).filter(
+                Resume.user_id == user_profile_id,
+                Resume.is_default == True
+            ).first()
+
+            if resume and resume.parsed_content:
+                try:
+                    parsed = json.loads(resume.parsed_content)
+
+                    # Extract key information from parsed resume
+                    resume_parts = []
+
+                    if parsed.get('sections', {}).get('experience'):
+                        resume_parts.append(f"Experience:\n{parsed['sections']['experience'][:500]}")
+
+                    if parsed.get('sections', {}).get('skills'):
+                        resume_parts.append(f"Skills:\n{parsed['sections']['skills'][:300]}")
+
+                    if parsed.get('skills'):
+                        resume_parts.append(f"Technical Skills: {', '.join(parsed['skills'][:15])}")
+
+                    resume_content = "\n\n".join(resume_parts)
+                except:
+                    pass
+
+            # Get skills from database
+            from backend.app.models import Skill
+            skills = db.query(Skill).filter(Skill.user_id == user_profile_id).all()
+            skills_text = ", ".join([s.name for s in skills]) if skills else ""
+
             # Build prompt
             prompt = f"""Generate a professional cover letter for the following job application.
 
@@ -54,15 +89,19 @@ Candidate Profile:
 - Email: {profile.email}
 - LinkedIn: {profile.linkedin_url or 'Not provided'}
 - Work Authorization: {profile.work_authorization or 'Not specified'}
+- Skills: {skills_text}
+
+{f"Resume Content:\n{resume_content}\n" if resume_content else ""}
 
 Requirements:
 1. Tailor the letter specifically to this job and company
-2. Highlight relevant experience and skills
+2. Highlight relevant experience and skills from the resume
 3. Professional and engaging tone
 4. Keep under {max_words} words
 5. Include proper greeting and closing
 6. Do not include placeholder brackets or template markers
 7. Make it personal and authentic
+8. Use specific examples from the resume when relevant
 
 Generate the complete cover letter now:"""
 

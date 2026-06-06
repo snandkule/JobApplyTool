@@ -146,6 +146,16 @@ def add_resume(
         dest_path = settings.resumes_dir / file_path.name
         shutil.copy(file_path, dest_path)
 
+        # Parse resume content
+        console.print("[cyan]Parsing resume content...[/cyan]")
+        from backend.app.services.resume_parser import parse_resume
+        parsed_content = parse_resume(dest_path)
+
+        if parsed_content:
+            console.print("[green]✓ Resume parsed successfully[/green]")
+        else:
+            console.print("[yellow]⚠ Resume parsing failed, but file was saved[/yellow]")
+
         # Create resume record
         resume = Resume(
             user_id=profile.id,
@@ -153,6 +163,7 @@ def add_resume(
             file_name=file_path.name,
             title=title or file_path.stem,
             is_default=make_default,
+            parsed_content=parsed_content,
         )
 
         # If this is set as default, unset other defaults
@@ -237,5 +248,144 @@ def list_skills():
 
         console.print(table)
 
+    finally:
+        db.close()
+
+
+@app.command()
+def list_resumes():
+    """List all resumes in your profile."""
+    db = SessionLocal()
+    try:
+        profile = db.query(UserProfile).first()
+        if not profile:
+            console.print("[yellow]No profile found.[/yellow]")
+            return
+
+        resumes = db.query(Resume).filter(Resume.user_id == profile.id).all()
+        if not resumes:
+            console.print("[yellow]No resumes found. Add one with:[/yellow]")
+            console.print("  [cyan]job-apply profile add-resume ~/resume.pdf[/cyan]")
+            return
+
+        table = Table(title="Resumes")
+        table.add_column("ID", style="cyan")
+        table.add_column("Title", style="white")
+        table.add_column("File Name", style="blue")
+        table.add_column("Default", style="green")
+        table.add_column("Parsed", style="yellow")
+
+        for resume in resumes:
+            table.add_row(
+                str(resume.id),
+                resume.title or "Untitled",
+                resume.file_name,
+                "✓" if resume.is_default else "",
+                "✓" if resume.parsed_content else "✗",
+            )
+
+        console.print(table)
+
+    finally:
+        db.close()
+
+
+@app.command()
+def show_resume(
+    resume_id: int = typer.Argument(..., help="Resume ID"),
+    show_content: bool = typer.Option(False, "--content", help="Show parsed content"),
+):
+    """Show resume details."""
+    db = SessionLocal()
+    try:
+        resume = db.query(Resume).filter(Resume.id == resume_id).first()
+        if not resume:
+            console.print(f"[red]Resume {resume_id} not found.[/red]")
+            return
+
+        # Basic info
+        table = Table(title=f"Resume #{resume_id}", show_header=False)
+        table.add_column("Field", style="cyan")
+        table.add_column("Value", style="white")
+
+        table.add_row("Title", resume.title or "Untitled")
+        table.add_row("File Name", resume.file_name)
+        table.add_row("File Path", resume.file_path)
+        table.add_row("Default", "Yes" if resume.is_default else "No")
+        table.add_row("Tags", resume.tags or "None")
+        table.add_row("Created", resume.created_at.strftime("%Y-%m-%d %H:%M"))
+
+        console.print(table)
+
+        # Parsed content
+        if resume.parsed_content:
+            console.print("\n[bold green]✓ Resume has been parsed[/bold green]")
+
+            if show_content:
+                import json
+                parsed = json.loads(resume.parsed_content)
+
+                console.print(f"\n[bold]Word Count:[/bold] {parsed.get('word_count', 0)}")
+                console.print(f"[bold]Character Count:[/bold] {parsed.get('char_count', 0)}")
+
+                if parsed.get('emails'):
+                    console.print(f"\n[bold]Emails:[/bold] {', '.join(parsed['emails'])}")
+
+                if parsed.get('phones'):
+                    console.print(f"\n[bold]Phones:[/bold] {', '.join(parsed['phones'])}")
+
+                if parsed.get('urls'):
+                    console.print(f"\n[bold]URLs:[/bold]")
+                    for url in parsed['urls']:
+                        console.print(f"  • {url}")
+
+                if parsed.get('skills'):
+                    console.print(f"\n[bold]Detected Skills:[/bold]")
+                    for skill in parsed['skills']:
+                        console.print(f"  • {skill}")
+
+                if parsed.get('sections'):
+                    console.print(f"\n[bold]Sections Found:[/bold]")
+                    for section_name in parsed['sections'].keys():
+                        console.print(f"  • {section_name.title()}")
+
+                console.print("\n[dim]Use --content to see full parsed text[/dim]")
+        else:
+            console.print("\n[yellow]⚠ Resume has not been parsed yet[/yellow]")
+            console.print("Re-add the resume to trigger parsing:")
+            console.print(f"  [cyan]job-apply profile add-resume {resume.file_path}[/cyan]")
+
+    finally:
+        db.close()
+
+
+@app.command()
+def reparse_resume(resume_id: int = typer.Argument(..., help="Resume ID")):
+    """Re-parse a resume to extract content."""
+    db = SessionLocal()
+    try:
+        resume = db.query(Resume).filter(Resume.id == resume_id).first()
+        if not resume:
+            console.print(f"[red]Resume {resume_id} not found.[/red]")
+            return
+
+        console.print(f"[cyan]Parsing resume: {resume.file_name}...[/cyan]")
+
+        from pathlib import Path
+        from backend.app.services.resume_parser import parse_resume
+
+        parsed_content = parse_resume(Path(resume.file_path))
+
+        if parsed_content:
+            resume.parsed_content = parsed_content
+            db.commit()
+            console.print("[bold green]✓ Resume parsed successfully![/bold green]")
+            console.print("\nUse 'job-apply profile show-resume {} --content' to view".format(resume_id))
+        else:
+            console.print("[red]✗ Resume parsing failed[/red]")
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        db.rollback()
     finally:
         db.close()
