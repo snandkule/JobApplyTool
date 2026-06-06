@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api import applications, auth, daemon, jobs, profile, questions
+from backend.app.api import applications, auth, daemon, jobs, profile, questions, websocket
 from backend.app.config import settings
 
 
@@ -41,6 +41,7 @@ app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])
 app.include_router(daemon.router, prefix="/api/daemon", tags=["Daemon"])
 app.include_router(questions.router, prefix="/api/questions", tags=["Questions & AI"])
+app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
 
 
 @app.get("/")
