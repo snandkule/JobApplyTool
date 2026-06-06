@@ -1,4 +1,4 @@
 """CLI commands package."""
-from cli.commands import auth, init, profile
+from cli.commands import apply, auth, init, jobs, profile
 
-__all__ = ["auth", "init", "profile"]
+__all__ = ["apply", "auth", "init", "jobs", "profile"]
