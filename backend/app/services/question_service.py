@@ -251,6 +251,44 @@ class QuestionService:
 
         return None
 
+    def get_ai_suggestion(
+        self,
+        question_id: int,
+        user_profile_id: int = 1,
+    ) -> Optional[str]:
+        """
+        Get AI-powered answer suggestion for a question.
+
+        Args:
+            question_id: Question ID
+            user_profile_id: User profile ID
+
+        Returns:
+            Suggested answer or None if AI fails
+        """
+        question = (
+            self.db.query(PendingQuestion)
+            .filter(PendingQuestion.id == question_id)
+            .first()
+        )
+
+        if not question:
+            return None
+
+        try:
+            from backend.app.ai.ai_service import AIService
+
+            ai = AIService()
+            return ai.suggest_answer(
+                question_text=question.question_text,
+                job_id=question.job_id,
+                user_profile_id=user_profile_id,
+                field_type=question.field_type,
+            )
+        except Exception as e:
+            print(f"AI suggestion failed for question {question_id}: {e}")
+            return None
+
     def get_question_statistics(self) -> Dict:
         """Get statistics about questions."""
         total_pending = (

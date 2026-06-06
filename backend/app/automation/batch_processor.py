@@ -102,6 +102,25 @@ class BatchProcessor:
                 item.status = "processing"
                 db.commit()
 
+                # AI preprocessing: generate cover letter if needed
+                app_record = db.query(Application).filter(
+                    Application.job_id == job.id,
+                    Application.user_id == user_profile_id
+                ).first()
+
+                if app_record and not app_record.cover_letter_text:
+                    try:
+                        from backend.app.ai.ai_service import AIService
+                        ai = AIService()
+                        cover_letter = ai.generate_cover_letter(
+                            job_id=job.id,
+                            user_profile_id=user_profile_id,
+                        )
+                        app_record.cover_letter_text = cover_letter
+                        db.commit()
+                    except Exception as e:
+                        print(f"AI cover letter generation failed for job {job.id}: {e}")
+
                 # Apply to job
                 try:
                     if job.platform == "linkedin":
