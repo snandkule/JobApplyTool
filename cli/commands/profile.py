@@ -474,7 +474,7 @@ def build_from_resume(
                     console.print(f"  • {edu.get('degree', 'Unknown')}")
 
             if not has_suggestions:
-                console.print("\n[green]✓ No new suggestions. Your profile is already complete\![/green]")
+                console.print("\n[green]✓ No new suggestions. Your profile is already complete![/green]")
                 return
 
             # Confirmation
@@ -509,7 +509,7 @@ def build_from_resume(
             counts = builder.apply_suggestions(profile.id, suggestions, selected_fields)
 
             # Show results
-            console.print("\n[bold green]✓ Profile updated\![/bold green]")
+            console.print("\n[bold green]✓ Profile updated![/bold green]")
             if counts["profile_fields_updated"] > 0:
                 console.print(f"  Profile fields: {counts['profile_fields_updated']}")
             if counts["skills_added"] > 0:
