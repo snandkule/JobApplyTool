@@ -220,17 +220,31 @@ class LinkedInScraper:
 
         try:
             # Navigate to login page
-            await page.goto(f"{self.BASE_URL}/login")
+            await page.goto(f"{self.BASE_URL}/login", wait_until="networkidle")
+
+            # Wait for login form to be visible
+            await page.wait_for_selector('input[name="session_key"]', timeout=10000)
 
             # Fill login form
             await page.fill('input[name="session_key"]', email)
             await page.fill('input[name="session_password"]', password)
 
-            # Click sign in button
+            # Click sign in button and wait for navigation
             await page.click('button[type="submit"]')
 
-            # Wait for navigation
-            await page.wait_for_url(f"{self.BASE_URL}/feed/**", timeout=30000)
+            # Wait for successful login (either feed or checkpoint)
+            try:
+                # Wait for either feed URL or checkpoint
+                await page.wait_for_url(f"{self.BASE_URL}/feed/**", timeout=30000)
+            except:
+                # Check if we're on checkpoint/challenge page
+                current_url = page.url
+                if "checkpoint" in current_url or "challenge" in current_url:
+                    print("LinkedIn requires additional verification. Please complete it in the browser.")
+                    print("Press Enter after completing verification...")
+                    input()
+                    # Wait again after manual verification
+                    await page.wait_for_url(f"{self.BASE_URL}/feed/**", timeout=60000)
 
             # Save session
             await self.browser.save_session("linkedin")

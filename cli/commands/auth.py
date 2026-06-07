@@ -17,23 +17,42 @@ console = Console()
 def linkedin():
     """Authenticate with LinkedIn and save session."""
     console.print("[bold]LinkedIn Authentication[/bold]\n")
-    console.print("Enter your LinkedIn credentials to save login session.")
-    console.print("[dim]Your credentials are only used to log in and are not stored.[/dim]\n")
+    console.print("A browser will open where you can log in to LinkedIn.")
+    console.print("The session will be saved after you log in successfully.\n")
+    console.print("[dim]Note: LinkedIn may require 2FA or verification.[/dim]\n")
 
-    email = Prompt.ask("LinkedIn email")
-    password = Prompt.ask("LinkedIn password", password=True)
+    console.print("[yellow]Press Enter to open browser...[/yellow]")
+    input()
 
     async def _auth():
         browser = BrowserManager()
-        await browser.start(headless=False)  # Show browser for login
-        scraper = LinkedInScraper(browser)
+        await browser.start(headless=False)
+        await browser.create_context("linkedin")
 
-        console.print("\n🔐 Logging in to LinkedIn...")
+        page = await browser.new_page()
+        await page.goto("https://www.linkedin.com/login")
 
-        success = await scraper.authenticate(email, password)
+        console.print("\n[bold]Please log in to LinkedIn in the browser...[/bold]")
+        console.print("[dim]Complete any 2FA or verification if prompted.[/dim]")
+        console.print("[yellow]Press Enter in terminal after you see your LinkedIn feed...[/yellow]\n")
 
-        await browser.close()
-        return success
+        input()
+
+        # Verify we're logged in
+        try:
+            await page.goto("https://www.linkedin.com/feed/", wait_until="networkidle", timeout=10000)
+            current_url = page.url
+            if "feed" in current_url or "linkedin.com/in/" in current_url:
+                # Save session
+                await browser.save_session("linkedin")
+                await browser.close()
+                return True
+            else:
+                await browser.close()
+                return False
+        except:
+            await browser.close()
+            return False
 
     success = run_async(_auth())
 
@@ -42,7 +61,7 @@ def linkedin():
         console.print("Session saved. You can now use automated job search and applications.")
     else:
         console.print("[bold red]❌ Authentication failed[/bold red]")
-        console.print("Please check your credentials and try again.")
+        console.print("Please try again and ensure you complete the login.")
 
 
 @app.command()
