@@ -1,170 +1,209 @@
-# Quick Start Guide
+# Quick Start Guide - Job Apply Tool
 
-Get started with Job Apply Tool in 5 minutes!
-
-## Installation
-
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Initialize the application
-./job-apply.sh init-command
-```
-
-## Create Your Profile
-
-```bash
-# Create profile (interactive)
-./job-apply.sh profile create
-```
-
-You'll be prompted to enter:
-- Full Name
-- Email
-- Phone
-- Location
-- LinkedIn URL
-- GitHub URL
-- Work Authorization
-- Visa Sponsorship status
-- Available start date
-
-## Add Your Resume
-
-```bash
-# Add your resume and set it as default
-./job-apply.sh profile add-resume ~/path/to/resume.pdf --default
-
-# Add multiple resumes with titles
-./job-apply.sh profile add-resume ~/senior-resume.pdf --title "Senior Engineer"
-./job-apply.sh profile add-resume ~/lead-resume.pdf --title "Tech Lead"
-```
-
-## Add Your Skills
-
-```bash
-# Add technical skills
-./job-apply.sh profile add-skill "Python" --category technical --proficiency expert
-./job-apply.sh profile add-skill "JavaScript" --category technical --proficiency advanced
-./job-apply.sh profile add-skill "React" --category technical --proficiency advanced
-./job-apply.sh profile add-skill "SQL" --category technical --proficiency expert
-
-# Add soft skills
-./job-apply.sh profile add-skill "Leadership" --category soft
-./job-apply.sh profile add-skill "Communication" --category soft
-
-# Add certifications
-./job-apply.sh profile add-skill "AWS Certified" --category certification
-
-# View all your skills
-./job-apply.sh profile list-skills
-```
-
-## View Your Profile
-
-```bash
-# See your complete profile
-./job-apply.sh profile show
-```
-
-## Available Commands
-
-```bash
-# Initialize
-./job-apply.sh init-command         # Set up database and directories
-./job-apply.sh version              # Show version
-
-# Profile Management
-./job-apply.sh profile create       # Create/update profile
-./job-apply.sh profile show         # View profile
-./job-apply.sh profile add-resume   # Add resume
-./job-apply.sh profile add-skill    # Add skill
-./job-apply.sh profile list-skills  # List all skills
-
-# Authentication (Coming in Phase 2)
-./job-apply.sh auth linkedin        # Login to LinkedIn
-./job-apply.sh auth indeed          # Login to Indeed
-./job-apply.sh auth status          # Check auth status
-
-# Help
-./job-apply.sh --help              # Show all commands
-./job-apply.sh profile --help      # Show profile commands
-```
-
-## What's Next?
-
-Phase 1 is complete! Here's what you can do:
-
-### Now Available:
-- ✅ Create and manage your profile
-- ✅ Upload multiple resumes
-- ✅ Add and organize skills
-- ✅ Store work history
-- ✅ Track education
-
-### Coming Soon (Phase 2-7):
-- 🔜 **Phase 2:** Browser automation for LinkedIn and Indeed
-- 🔜 **Phase 3:** Bulk auto-apply engine (100+ jobs/day)
-- 🔜 **Phase 4:** Interactive Q&A learning system
-- 🔜 **Phase 5:** AI-powered cover letter generation via Claude Code
-- 🔜 **Phase 6:** Web dashboard with real-time stats
-- 🔜 **Phase 7:** Email integration and analytics
-
-## Configuration
-
-Edit `.env` file (copy from `.env.example`) to customize:
-
-```bash
-# Database
-DATABASE_URL=sqlite:///./data/job_apply.db
-
-# Rate Limits
-LINKEDIN_MAX_PER_DAY=50
-INDEED_MAX_PER_DAY=100
-
-# Browser
-BROWSER_HEADLESS=True
-
-# AI (Claude Code CLI path)
-CLAUDE_CLI_PATH=claude
-```
-
-## Troubleshooting
-
-### "No module named 'cli'"
-```bash
-# Make sure you're in the project directory
-cd JobApplyTool
-./job-apply.sh --help
-```
-
-### "Database not found"
-```bash
-# Run initialization first
-./job-apply.sh init-command
-```
-
-### "No profile found"
-```bash
-# Create a profile first
-./job-apply.sh profile create
-```
-
-## Data Location
-
-All your data is stored in the `data/` directory:
-- `data/job_apply.db` - SQLite database
-- `data/resumes/` - Your uploaded resumes
-- `data/cover_letters/` - Generated cover letters
-- `data/screenshots/` - Debug screenshots
-
-## Need Help?
-
-- 📖 Full documentation: [docs/DESIGN.md](docs/DESIGN.md)
-- ✅ Phase 1 completion: [docs/PHASE1_COMPLETE.md](docs/PHASE1_COMPLETE.md)
-- 📝 README: [README.md](README.md)
+Get started in **5 minutes** and start auto-applying to jobs\!
 
 ---
 
-**Ready to automate your job search!** 🚀
+## Prerequisites
+
+- Python 3.11+
+- Node.js 18+ (optional, for web dashboard)
+- A resume file (PDF/DOCX)
+
+---
+
+## Installation (2 minutes)
+
+### 1. Clone and Install
+
+```bash
+# Clone repository
+git clone https://github.com/snandkule/JobApplyTool.git
+cd JobApplyTool
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install Playwright browsers
+playwright install chromium
+```
+
+### 2. Initialize
+
+```bash
+python -m cli.main init
+```
+
+This creates:
+- `data/` directory
+- SQLite database
+- Configuration files
+
+---
+
+## Setup Profile (1 minute)
+
+### Option 1: Quick Setup (Automated - Recommended)
+
+```bash
+# 1. Create minimal profile
+python -m cli.main profile create
+# Enter just: Name and Email
+
+# 2. Upload your resume
+python -m cli.main profile add-resume ~/path/to/resume.pdf --default
+
+# 3. Auto-build profile from resume\!
+python -m cli.main profile build-from-resume 1
+# Review suggestions and type: all
+```
+
+**Done\!** Your profile is now complete with skills, work history, and education extracted from your resume.
+
+### Option 2: Manual Setup
+
+```bash
+# Create profile
+python -m cli.main profile create
+
+# Add resume
+python -m cli.main profile add-resume ~/resume.pdf --default
+
+# Add skills manually
+python -m cli.main profile add-skill "Python" --proficiency "Expert"
+python -m cli.main profile add-skill "React" --proficiency "Advanced"
+```
+
+---
+
+## Start Applying (1 minute)
+
+### Daemon Mode (24/7 Automation)
+
+```bash
+# Start automation
+python -m cli.main daemon start \
+  --criteria "Software Engineer" \
+  --location "Remote" \
+  --max-daily 50
+
+# Monitor status
+python -m cli.main daemon status
+```
+
+The daemon will automatically:
+- ✅ Search for matching jobs
+- ✅ Score them with AI  
+- ✅ Generate unique cover letters
+- ✅ Apply automatically
+- ✅ Ask you questions when uncertain
+
+---
+
+## Answer Questions (As Needed)
+
+```bash
+# View pending questions
+python -m cli.main questions list
+
+# Answer all questions interactively
+python -m cli.main questions batch-answer
+```
+
+---
+
+## Complete Example
+
+```bash
+# 1. Install
+git clone https://github.com/snandkule/JobApplyTool.git
+cd JobApplyTool
+pip install -r requirements.txt
+playwright install chromium
+
+# 2. Initialize
+python -m cli.main init
+
+# 3. Quick profile setup
+python -m cli.main profile create
+python -m cli.main profile add-resume ~/resume.pdf --default
+python -m cli.main profile build-from-resume 1
+
+# 4. Authenticate platforms
+python -m cli.main auth linkedin
+python -m cli.main auth indeed
+
+# 5. Start auto-applying\!
+python -m cli.main daemon start \
+  --criteria "Software Engineer" \
+  --max-daily 50
+```
+
+**Done\! The bot is now running 24/7 and applying to jobs automatically.**
+
+---
+
+## Web Dashboard (Optional)
+
+For real-time monitoring:
+
+```bash
+# Terminal 1: Backend
+uvicorn backend.app.main:app --port 8000
+
+# Terminal 2: Frontend  
+cd frontend && npm install && npm run dev
+
+# Open: http://localhost:5173
+```
+
+---
+
+## Common Commands
+
+```bash
+# Profile
+python -m cli.main profile show
+python -m cli.main profile list-skills
+
+# Applications
+python -m cli.main apply stats
+python -m cli.main apply list --status submitted
+
+# Questions
+python -m cli.main questions list
+python -m cli.main questions batch-answer
+
+# Daemon
+python -m cli.main daemon status
+python -m cli.main daemon stop
+python -m cli.main daemon logs
+```
+
+---
+
+## What to Expect
+
+**Day 1-2:**
+- 20-30 applications submitted
+- 10-15 questions to answer (teaches the bot)
+
+**Day 3+:**
+- 40-50 applications submitted
+- 1-2 questions (bot learned from your answers)
+
+**Week 2:**
+- 200-300 total applications
+- High automation (95%+ questions auto-answered)
+
+---
+
+## Full Documentation
+
+- **Complete Guide:** [README.md](README.md)
+- **Web Dashboard:** [docs/WEB_DASHBOARD_GUIDE.md](docs/WEB_DASHBOARD_GUIDE.md)
+- **Architecture:** [docs/DESIGN.md](docs/DESIGN.md)
+
+---
+
+**You're ready\! Start applying to hundreds of jobs automatically.** 🚀
