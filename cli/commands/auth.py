@@ -38,19 +38,33 @@ def linkedin():
 
         input()
 
-        # Verify we're logged in
+        # Verify we're logged in by checking current URL
         try:
-            await page.goto("https://www.linkedin.com/feed/", wait_until="networkidle", timeout=10000)
             current_url = page.url
-            if "feed" in current_url or "linkedin.com/in/" in current_url:
+            console.print(f"[dim]Current URL: {current_url}[/dim]")
+
+            # Check if we're on LinkedIn and logged in
+            if "linkedin.com" in current_url and not "login" in current_url:
+                # Try to navigate to feed to confirm
+                try:
+                    await page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded", timeout=15000)
+                    console.print("[dim]Navigated to feed successfully[/dim]")
+                except Exception as nav_error:
+                    console.print(f"[dim]Navigation note: {nav_error}[/dim]")
+                    # Still save session if we're logged in somewhere on LinkedIn
+
                 # Save session
+                console.print("[dim]Saving session...[/dim]")
                 await browser.save_session("linkedin")
+                console.print("[dim]Session saved successfully[/dim]")
                 await browser.close()
                 return True
             else:
+                console.print(f"[red]Not logged in. URL: {current_url}[/red]")
                 await browser.close()
                 return False
-        except:
+        except Exception as e:
+            console.print(f"[red]Error during verification: {e}[/red]")
             await browser.close()
             return False
 
