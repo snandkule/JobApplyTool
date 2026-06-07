@@ -9,7 +9,6 @@ from backend.app.database.session import init_db
 console = Console()
 
 
-@typer.command(name="init")
 def init_command():
     """Initialize the application (create directories and database)."""
     console.print(Panel.fit("🚀 Initializing Job Apply Tool", style="bold blue"))

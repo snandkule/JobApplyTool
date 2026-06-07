@@ -18,7 +18,7 @@ app.add_typer(apply.app, name="apply", help="Apply to jobs")
 app.add_typer(daemon.app, name="daemon", help="Manage background daemon")
 app.add_typer(questions.app, name="questions", help="Manage Q&A and knowledge base")
 app.add_typer(ai.app, name="ai", help="AI-powered features")
-app.command()(init.init_command)
+app.command(name="init")(init.init_command)
 
 console = Console()
 
