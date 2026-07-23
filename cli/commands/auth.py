@@ -25,6 +25,7 @@ def linkedin():
     input()
 
     async def _auth():
+        import asyncio  # Import at function level
         browser = BrowserManager()
         await browser.start(headless=False)
         await browser.create_context("linkedin")
@@ -32,37 +33,62 @@ def linkedin():
         page = await browser.new_page()
         await page.goto("https://www.linkedin.com/login")
 
-        console.print("\n[bold]Please log in to LinkedIn in the browser...[/bold]")
-        console.print("[dim]Complete any 2FA or verification if prompted.[/dim]")
-        console.print("[yellow]Press Enter in terminal after you see your LinkedIn feed...[/yellow]\n")
+        console.print("\n[bold cyan]IMPORTANT: Follow these steps:[/bold cyan]")
+        console.print("1. Log in to LinkedIn in the browser")
+        console.print("2. Complete any 2FA or verification")
+        console.print("3. [bold]WAIT until you see your LinkedIn feed[/bold]")
+        console.print("   (The URL should change to: https://www.linkedin.com/feed/)")
+        console.print("4. [bold yellow]Only then press Enter in this terminal[/bold yellow]\n")
 
-        input()
+        console.print("[yellow]Waiting for you to complete login...[/yellow]")
+        input("\nPress Enter ONLY after you see the feed: ")
 
         # Verify we're logged in by checking current URL
         try:
+            # Give the page a moment to settle after user presses Enter
+            console.print(f"\n[dim]Checking authentication...[/dim]")
+            await asyncio.sleep(2)
+
+            # Wait for navigation to complete
+            try:
+                await page.wait_for_load_state("networkidle", timeout=5000)
+            except:
+                pass  # Continue even if this times out
+
             current_url = page.url
             console.print(f"[dim]Current URL: {current_url}[/dim]")
 
-            # Check if we're on LinkedIn and logged in
-            if "linkedin.com" in current_url and not "login" in current_url:
-                # Try to navigate to feed to confirm
-                try:
-                    await page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded", timeout=15000)
-                    console.print("[dim]Navigated to feed successfully[/dim]")
-                except Exception as nav_error:
-                    console.print(f"[dim]Navigation note: {nav_error}[/dim]")
-                    # Still save session if we're logged in somewhere on LinkedIn
-
-                # Save session
-                console.print("[dim]Saving session...[/dim]")
-                await browser.save_session("linkedin")
-                console.print("[dim]Session saved successfully[/dim]")
-                await browser.close()
-                return True
+            # Check if we're on the feed or another logged-in page
+            if "feed" in current_url:
+                console.print("[green]✓ Detected LinkedIn feed[/green]")
+            elif "linkedin.com" in current_url and "login" not in current_url:
+                console.print("[yellow]⚠ On LinkedIn but not on feed, attempting to navigate...[/yellow]")
             else:
-                console.print(f"[red]Not logged in. URL: {current_url}[/red]")
+                console.print(f"[red]✗ Still on login page. You must complete the login first.[/red]")
+                console.print(f"[red]Current URL: {current_url}[/red]")
+                console.print("\n[yellow]Tips:[/yellow]")
+                console.print("• Enter your email and password")
+                console.print("• Click 'Sign in'")
+                console.print("• Complete any verification")
+                console.print("• WAIT for the feed to load")
+                console.print("• Then run: job-apply auth linkedin again")
                 await browser.close()
                 return False
+
+            # We're logged in, try to ensure we're on feed
+            if "feed" not in current_url:
+                try:
+                    await page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded", timeout=15000)
+                    console.print("[green]✓ Navigated to feed[/green]")
+                except Exception as nav_error:
+                    console.print(f"[yellow]Navigation issue (but will save session): {nav_error}[/yellow]")
+
+            # Save session
+            console.print("[cyan]Saving LinkedIn session...[/cyan]")
+            await browser.save_session("linkedin")
+            console.print("[green]✓ Session saved successfully![/green]")
+            await browser.close()
+            return True
         except Exception as e:
             console.print(f"[red]Error during verification: {e}[/red]")
             await browser.close()
